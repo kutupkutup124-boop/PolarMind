@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kutup Araştırmacıları Psikolojik Durum Tarayıcısı</title>
+    <style>
+        :root {
+            --bg-color: #e0f2fe; /* Buz mavisi arka plan */
+            --card-bg: #ffffff;
+            --primary: #0284c7; /* Koyu mavi */
+            --primary-hover: #0369a1;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --danger: #ef4444;
+            --success: #10b981;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+        }
+
+        h1 {
+            color: var(--primary);
+            font-size: 24px;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        p.subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+
+        .question-block {
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .question-text {
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .options-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .option-label {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 12px;
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+
+        .option-label input {
+            margin-bottom: 5px;
+            transform: scale(1.2);
+            accent-color: var(--primary);
+        }
+
+        .scale-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 5px;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-top: 20px;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        #results-screen {
+            display: none;
+        }
+
+        .result-card {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+
+        .risk-high { background-color: #fee2e2; color: #b91c1c; border-left: 5px solid #ef4444; }
+        .risk-low { background-color: #d1fae5; color: #047857; border-left: 5px solid #10b981; }
+
+        .disclaimer {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-align: center;
+            margin-top: 20px;
+            border-top: 1px solid var(--border);
+            padding-top: 15px;
+        }
+
+        .error {
+            color: var(--danger);
+            font-size: 14px;
+            text-align: center;
+            margin-bottom: 15px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container" id="app-container">
+    
+    <div id="survey-screen">
+        <h1>PolarMind Ön Tarama</h1>
+        <p class="subtitle">Son 2 hafta içerisindeki hislerinizi düşünerek aşağıdaki ifadelere ne kadar katıldığınızı 1 (Hiç katılmıyorum) ile 5 (Çok katılıyorum) arasında puanlayın.</p>
+        
+        <div class="error" id="error-msg">Lütfen sonuçları görmeden önce tüm soruları yanıtlayın.</div>
+
+        <form id="survey-form">
+            </form>
+
+        <button onclick="calculateResults()">Sonuçları Analiz Et</button>
+    </div>
+
+    <div id="results-screen">
+        <h1>Tarama Sonuçları</h1>
+        <p class="subtitle">Yanıtlarınıza göre oluşturulan ön değerlendirme raporu aşağıdadır.</p>
+        
+        <div id="results-content"></div>
+
+        <button onclick="location.reload()" style="background-color: var(--text-muted);">Yeni Tarama Başlat</button>
+        
+        <p class="disclaimer">
+            <strong>Yasal Uyarı:</strong> Bu uygulama profesyonel bir tıbbi teşhis aracı değildir. Sadece ön farkındalık yaratmak amacıyla tasarlanmıştır. Herhangi bir psikolojik rahatsızlık şüphesinde mutlaka istasyon doktoruna veya bir ruh sağlığı profesyoneline başvurulmalıdır.
+        </p>
+    </div>
+
+</div>
+
+<script>
+    // Sorular ve ölçtükleri kategoriler (Ters mantık: Puan düşükse risk yüksek)
+    const questions = [
+        { id: "q1", text: "Kendimi enerjik hissettim.", category: "depresyon" },
+        { id: "q2", text: "Günlük faaliyetlerimle ilgilenebildim.", category: "depresyon" },
+        { id: "q3", text: "Kendimi sakin ve dengeli hissettim.", category: "anksiyete" },
+        { id: "q4", text: "Günlük yaşamımdan memnuniyet duydum.", category: "depresyon" },
+        { id: "q5", text: "Günlük sorumluluklarımı yönetebildiğimi hissettim.", category: "anksiyete" },
+        { id: "q6", text: "Beklenmeyen durumlarla başa çıkabildim.", category: "anksiyete" },
+        { id: "q7", text: "Günlük yoğunluk seviyem beni zorlamadı.", category: "anksiyete" },
+        { id: "q8", text: "Uyku sürem benim için yeterliydi.", category: "uyku" },
+        { id: "q9", text: "Uyandığımda dinlenmiş hissettim.", category: "uyku" },
+        { id: "q10", text: "Bulunduğum ortamla uyum içinde hissettim.", category: "anksiyete" }
+    ];
+
+    const form = document.getElementById('survey-form');
+
+    // Soruları HTML'e yazdırma fonksiyonu
+    questions.forEach((q, index) => {
+        const questionHtml = `
+            <div class="question-block">
+                <span class="question-text">${index + 1}. ${q.text}</span>
+                <div class="options-container">
+                    ${[1, 2, 3, 4, 5].map(val => `
+                        <label class="option-label">
+                            <input type="radio" name="${q.id}" value="${val}" required>
+                            ${val}
+                        </label>
+                    `).join('')}
+                </div>
+                <div class="scale-labels">
+                    <span>Hiç Katılmıyorum</span>
+                    <span>Çok Katılıyorum</span>
+                </div>
+            </div>
+        `;
+        form.innerHTML += questionHtml;
+    });
+
+    function calculateResults() {
+        const formData = new FormData(form);
+        const errorMsg = document.getElementById('error-msg');
+        let answers = {};
+        
+        // Tüm sorular cevaplandı mı kontrolü
+        for (let q of questions) {
+            const val = formData.get(q.id);
+            if (!val) {
+                errorMsg.style.display = 'block';
+                return;
+            }
+            answers[q.id] = parseInt(val);
+        }
+        
+        errorMsg.style.display = 'none';
+
+        // Kategorilere göre puanları toplama
+        let scores = { depresyon: { total: 0, count: 0 }, anksiyete: { total: 0, count: 0 }, uyku: { total: 0, count: 0 } };
+
+        questions.forEach(q => {
+            scores[q.category].total += answers[q.id];
+            scores[q.category].count += 1;
+        });
+
+        // Ortalamaları hesapla (1-5 arası)
+        const avgScores = {
+            depresyon: scores.depresyon.total / scores.depresyon.count,
+            anksiyete: scores.anksiyete.total / scores.anksiyete.count,
+            uyku: scores.uyku.total / scores.uyku.count
+        };
+
+        displayResults(avgScores);
+    }
+
+    function displayResults(avgScores) {
+        document.getElementById('survey-screen').style.display = 'none';
+        document.getElementById('results-screen').style.display = 'block';
+        
+        const resultsContent = document.getElementById('results-content');
+        resultsContent.innerHTML = '';
+
+        // Eşik değerleri (Ortalama 3'ün altındaysa yüksek risk)
+        const categories = [
+            { key: 'uyku', name: 'Uyku Bozukluğu Riski', desc: 'Uyku kalitenizde ve sürenizde ciddi düzensizlikler olabilir.' },
+            { key: 'depresyon', name: 'Depresif Belirti Riski', desc: 'Enerji düşüklüğü ve günlük faaliyetlere karşı ilgi kaybı yaşanıyor olabilir.' },
+            { key: 'anksiyete', name: 'Anksiyete (Kaygı) Riski', desc: 'Ortama uyum sağlama, sakin kalma ve stres yönetiminde zorlanmalar olabilir.' }
+        ];
+
+        let hasHighRisk = false;
+
+        categories.forEach(cat => {
+            const avg = avgScores[cat.key];
+            const isHighRisk = avg < 3.0; // 3 ve altı ortalama risk kabul edildi
+            
+            if (isHighRisk) hasHighRisk = true;
+
+            const cardHtml = `
+                <div class="result-card ${isHighRisk ? 'risk-high' : 'risk-low'}">
+                    <strong>${cat.name}:</strong> ${isHighRisk ? 'Yüksek Riskli' : 'Normal Seviye'}
+                    <div style="font-size: 13px; margin-top: 5px; color: inherit; opacity: 0.9;">
+                        ${isHighRisk ? cat.desc : 'Şu an için bu alanda belirgin bir risk gözlemlenmedi.'}
+                    </div>
+                </div>
+            `;
+            resultsContent.innerHTML += cardHtml;
+        });
+
+        if (hasHighRisk) {
+            resultsContent.innerHTML += `
+                <div style="margin-top: 20px; padding: 15px; background-color: #fffbeb; border: 1px solid #fef3c7; border-radius: 8px; font-size: 14px; color: #92400e;">
+                    <strong>Öneri:</strong> Bazı alanlarda risk değerleri saptandı. Kutup şartlarının zorluğu göz önüne alındığında, bu durumları ekip doktoruyla veya tıbbi destek birimiyle paylaşmanız faydalı olacaktır.
+                </div>
+            `;
+        }
+    }
+</script>
+
+</body>
+</html>
