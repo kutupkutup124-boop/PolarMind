@@ -17,6 +17,9 @@
             --danger: #ef4444;
             --success: #10b981;
             --accent: #f59e0b;
+            --warning-bg: #fff7ed;
+            --warning-text: #c2410c;
+            --warning-border: #f97316;
         }
 
         body {
@@ -61,15 +64,15 @@
         #results-screen, #history-screen { display: none; }
 
         .result-card { padding: 15px; border-radius: 8px; margin-bottom: 10px; font-weight: 500; font-size: 14px; }
-        .risk-high { background-color: #fee2e2; color: #b91c1c; border-left: 5px solid #ef4444; }
-        .risk-low { background-color: #d1fae5; color: #047857; border-left: 5px solid #10b981; }
+        .status-needs-care { background-color: var(--warning-bg); color: var(--warning-text); border-left: 5px solid var(--warning-border); }
+        .status-good { background-color: #d1fae5; color: #047857; border-left: 5px solid #10b981; }
 
         .motivation-box {
-            background-color: #fffbeb; border: 1px solid #fcd34d; border-radius: 8px;
+            background-color: #f0fdf4; border: 1px solid #86efac; border-radius: 8px;
             padding: 20px; margin: 20px 0; text-align: center;
         }
-        .motivation-title { font-weight: bold; color: #b45309; margin-bottom: 10px; font-size: 16px; }
-        .motivation-task { color: #92400e; font-size: 15px; font-style: italic; }
+        .motivation-title { font-weight: bold; color: #166534; margin-bottom: 10px; font-size: 16px; }
+        .motivation-task { color: #15803d; font-size: 15px; font-style: italic; }
 
         .chart-container { margin-top: 20px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; }
         
@@ -99,11 +102,12 @@
 
     <div id="results-screen">
         <h1>Günün Analizi</h1>
+        <p class="subtitle" style="margin-bottom: 15px;">İşte bugünkü genel durumun.</p>
         
         <div id="results-content"></div>
         
         <div class="motivation-box">
-            <div class="motivation-title">🎯 Günün Görevi</div>
+            <div class="motivation-title">🎯 Günün Önerisi</div>
             <div class="motivation-task" id="motivation-text">Görev yükleniyor...</div>
         </div>
 
@@ -115,7 +119,7 @@
 
     <div id="history-screen">
         <h1>Gelişim Grafiği</h1>
-        <p class="subtitle">Son 14 testinizin risk ortalamaları (Puan düştükçe risk artar)</p>
+        <p class="subtitle">Son 14 testinizin ortalamaları (Puan yükseldikçe durumunuz daha iyi demektir)</p>
 
         <div class="chart-container">
             <canvas id="historyChart"></canvas>
@@ -127,46 +131,41 @@
 </div>
 
 <script>
+    // Sorular Ruh Hali ve Uyku olarak iki ana kategoriye ayrıldı
     const questions = [
-        { id: "q1", text: "Kendimi enerjik hissettim.", category: "depresyon" },
-        { id: "q2", text: "Günlük faaliyetlerimle ilgilenebildim.", category: "depresyon" },
-        { id: "q3", text: "Kendimi sakin ve dengeli hissettim.", category: "anksiyete" },
-        { id: "q4", text: "Günlük yaşamımdan memnuniyet duydum.", category: "depresyon" },
-        { id: "q5", text: "Günlük sorumluluklarımı yönetebildiğimi hissettim.", category: "anksiyete" },
-        { id: "q6", text: "Beklenmeyen durumlarla başa çıkabildim.", category: "anksiyete" },
-        { id: "q7", text: "Günlük yoğunluk seviyem beni zorlamadı.", category: "anksiyete" },
+        { id: "q1", text: "Kendimi enerjik hissettim.", category: "ruh_sagligi" },
+        { id: "q2", text: "Günlük faaliyetlerimle ilgilenebildim.", category: "ruh_sagligi" },
+        { id: "q3", text: "Kendimi sakin ve dengeli hissettim.", category: "ruh_sagligi" },
+        { id: "q4", text: "Günlük yaşamımdan memnuniyet duydum.", category: "ruh_sagligi" },
+        { id: "q5", text: "Günlük sorumluluklarımı yönetebildiğimi hissettim.", category: "ruh_sagligi" },
+        { id: "q6", text: "Beklenmeyen durumlarla başa çıkabildim.", category: "ruh_sagligi" },
+        { id: "q7", text: "Günlük yoğunluk seviyem beni zorlamadı.", category: "ruh_sagligi" },
         { id: "q8", text: "Uyku sürem benim için yeterliydi.", category: "uyku" },
         { id: "q9", text: "Uyandığımda dinlenmiş hissettim.", category: "uyku" },
-        { id: "q10", text: "Bulunduğum ortamla uyum içinde hissettim.", category: "anksiyete" }
+        { id: "q10", text: "Bulunduğum ortamla uyum içinde hissettim.", category: "ruh_sagligi" }
     ];
 
-    // Motivasyon ve Görev Havuzu
+    // Motivasyon ve Görev Havuzu yapıcı bir dille güncellendi
     const tasks = {
-        lowRisk: [
-            "Bugün harika gidiyorsun! Ekip arkadaşlarına pozitif enerjini yansıt.",
-            "Zihnin berrak görünüyor, bugün planladığın bir araştırmaya odaklanmak için harika bir gün.",
+        harika: [
+            "Bugün harika gidiyorsun! Ekip arkadaşlarına bu güzel enerjini yansıt.",
+            "Zihnin berrak görünüyor, bugün odaklanma gerektiren bir araştırmaya vakit ayırmak için harika bir gün.",
             "Bu dengeyi korumak için bugün sevdiğin bir müziği dinlemeyi veya kitap okumayı unutma."
         ],
         uyku: [
-            "Yatmadan 1 saat önce ekranlardan (telefon/bilgisayar) uzaklaş ve sadece dinlen.",
+            "Bugün uyku düzenine biraz daha özen göstermek iyi olabilir. Yatmadan 1 saat önce ekranlardan uzaklaş.",
             "Uyku kaliteni artırmak için kafein tüketimini bugün erken saatlerde kesmeye çalış.",
             "Uyuduğun odanın tamamen karanlık olduğundan emin ol ve uyku öncesi hafif bir germe egzersizi yap."
         ],
-        depresyon: [
-            "Bugün en az 15 dakika gün ışığı lambası (SAD lambası) altında vakit geçir.",
-            "Kendini zorlamadan, sadece bir ekip arkadaşınla 10 dakikalık kısa bir sohbet et.",
-            "Geçmişte başardığın zor bir görevi hatırlayıp kendini takdir et."
-        ],
-        anksiyete: [
-            "Bugün 5 dakikanı ayırarak sadece derin nefes alıp ver (4 saniye al, 7 saniye tut, 8 saniye ver).",
-            "Zihnini sakinleştirmek için bugün aynı anda birden fazla iş yapma, tek bir göreve odaklan.",
-            "Bugün haberleri veya stres yaratan dış verileri okumaya ara ver."
+        ruh_sagligi: [
+            "Bugün zihnini dinlendirmeye biraz daha vakit ayır. En az 15 dakika gün ışığı lambası altında dinlen.",
+            "Kendini zorlamadan, sadece sevdiğin bir ekip arkadaşınla 10 dakikalık kısa bir sohbet et.",
+            "Bugün haberleri veya stres yaratan dış verileri okumaya ara ver. 5 dakika sadece derin nefes al."
         ]
     };
 
     const form = document.getElementById('survey-form');
 
-    // Soruları HTML'e ekle
     questions.forEach((q, index) => {
         const questionHtml = `
             <div class="question-block">
@@ -198,12 +197,15 @@
         
         errorMsg.style.display = 'none';
 
-        let scores = { depresyon: { t: 0, c: 0 }, anksiyete: { t: 0, c: 0 }, uyku: { t: 0, c: 0 } };
-        questions.forEach(q => { scores[q.category].t += answers[q.id]; scores[q.category].c += 1; });
+        // İki ana kategori için hesaplama yapılıyor
+        let scores = { ruh_sagligi: { t: 0, c: 0 }, uyku: { t: 0, c: 0 } };
+        questions.forEach(q => { 
+            scores[q.category].t += answers[q.id]; 
+            scores[q.category].c += 1; 
+        });
 
         const avgScores = {
-            depresyon: (scores.depresyon.t / scores.depresyon.c).toFixed(1),
-            anksiyete: (scores.anksiyete.t / scores.anksiyete.c).toFixed(1),
+            ruh_sagligi: (scores.ruh_sagligi.t / scores.ruh_sagligi.c).toFixed(1),
             uyku: (scores.uyku.t / scores.uyku.c).toFixed(1)
         };
 
@@ -219,9 +221,8 @@
         resultsContent.innerHTML = '';
 
         const categories = [
-            { key: 'uyku', name: 'Uyku Bozukluğu Riski' },
-            { key: 'depresyon', name: 'Depresif Belirti Riski' },
-            { key: 'anksiyete', name: 'Anksiyete (Kaygı) Riski' }
+            { key: 'ruh_sagligi', name: 'Ruh Hali ve Enerji Seviyesi' },
+            { key: 'uyku', name: 'Uyku Kalitesi ve Düzeni' }
         ];
 
         let lowestCategory = null;
@@ -229,39 +230,39 @@
 
         categories.forEach(cat => {
             const avg = parseFloat(avgScores[cat.key]);
-            const isHighRisk = avg < 3.0;
+            const needsCare = avg < 3.0; // 3'ün altı özen gerektirir
             
-            // Hangi alanda en çok zorlanıyorsa görevi ona göre seçeceğiz
+            // Hangi alanda daha çok destek gerekiyorsa görevi ona göre seçeceğiz
             if (avg < lowestScore) {
                 lowestScore = avg;
                 lowestCategory = cat.key;
             }
 
+            const statusText = needsCare ? 'Özen Gösterilmeli' : 'İyi Durumda';
+
             resultsContent.innerHTML += `
-                <div class="result-card ${isHighRisk ? 'risk-high' : 'risk-low'}">
-                    <strong>${cat.name}:</strong> ${isHighRisk ? 'Yüksek Riskli' : 'Normal Seviye'} (Puan: ${avg})
+                <div class="result-card ${needsCare ? 'status-needs-care' : 'status-good'}">
+                    <strong>${cat.name}:</strong> ${statusText} (Ortalama: ${avg} / 5)
                 </div>
             `;
         });
 
-        // Motivasyon görevini belirle
-        let taskArray = lowestScore < 3.0 ? tasks[lowestCategory] : tasks.lowRisk;
+        // Motivasyon görevini belirle (Eğer puanlar iyiyse "harika" kategorisi)
+        let taskArray = lowestScore < 3.0 ? tasks[lowestCategory] : tasks.harika;
         let randomTask = taskArray[Math.floor(Math.random() * taskArray.length)];
         document.getElementById('motivation-text').innerText = randomTask;
     }
 
     function saveDataLocally(scores) {
-        let history = JSON.parse(localStorage.getItem('polarData') || '[]');
+        let history = JSON.parse(localStorage.getItem('polarDataV2') || '[]');
         
-        // Sadece günün tarihini al (saat hariç)
         const today = new Date().toLocaleDateString('tr-TR');
-        
         history.push({ date: today, scores: scores });
         
-        // En fazla son 14 günü tut (Hafızayı şişirmemek için)
         if(history.length > 14) history = history.slice(-14);
         
-        localStorage.setItem('polarData', JSON.stringify(history));
+        // Verilerin önceki versiyonla karışmaması için key ismini değiştirdim (polarDataV2)
+        localStorage.setItem('polarDataV2', JSON.stringify(history));
     }
 
     function showHistory() {
@@ -269,17 +270,16 @@
         document.getElementById('results-screen').style.display = 'none';
         document.getElementById('history-screen').style.display = 'block';
 
-        const history = JSON.parse(localStorage.getItem('polarData') || '[]');
+        const history = JSON.parse(localStorage.getItem('polarDataV2') || '[]');
         
         if(history.length === 0) {
-            alert("Henüz kaydedilmiş bir test sonucunuz bulunmuyor.");
+            alert("Henüz kaydedilmiş yeni formata uygun bir test sonucunuz bulunmuyor.");
             location.reload();
             return;
         }
 
         const labels = history.map((item, index) => `Test ${index + 1} (${item.date})`);
-        const dataDepresyon = history.map(item => item.scores.depresyon);
-        const dataAnksiyete = history.map(item => item.scores.anksiyete);
+        const dataRuhSagligi = history.map(item => item.scores.ruh_sagligi);
         const dataUyku = history.map(item => item.scores.uyku);
 
         const ctx = document.getElementById('historyChart').getContext('2d');
@@ -288,9 +288,8 @@
             data: {
                 labels: labels,
                 datasets: [
-                    { label: 'Depresyon', data: dataDepresyon, borderColor: '#3b82f6', tension: 0.3 },
-                    { label: 'Anksiyete', data: dataAnksiyete, borderColor: '#f59e0b', tension: 0.3 },
-                    { label: 'Uyku', data: dataUyku, borderColor: '#8b5cf6', tension: 0.3 }
+                    { label: 'Ruh Hali ve Enerji', data: dataRuhSagligi, borderColor: '#0ea5e9', backgroundColor: '#0ea5e9', tension: 0.3 },
+                    { label: 'Uyku Kalitesi', data: dataUyku, borderColor: '#8b5cf6', backgroundColor: '#8b5cf6', tension: 0.3 }
                 ]
             },
             options: {
