@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kutup Zihin | Mental Takip Sistemi</title>
+    <title>Kutup Zihin Ön Tarama ve Takip</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
@@ -35,7 +35,7 @@
             border-radius: 20px; box-shadow: 0 12px 30px rgba(122, 155, 118, 0.1);
         }
 
-        h1 { color: var(--primary); font-size: 28px; text-align: center; margin-bottom: 5px; letter-spacing: -0.5px; }
+        h1 { color: var(--primary); font-size: 26px; text-align: center; margin-bottom: 5px; letter-spacing: -0.5px; }
         p.subtitle { text-align: center; color: var(--text-muted); font-size: 14px; margin-bottom: 30px; }
 
         .question-block { margin-bottom: 22px; padding-bottom: 18px; border-bottom: 1px solid var(--border); transition: background 0.3s; border-radius: 8px; }
@@ -79,109 +79,137 @@
 <div class="container" id="app-container">
     
     <div id="survey-screen">
-        <h1>Kutup Zihin</h1>
-        <p class="subtitle">Günlük mental denge taramasına hoş geldiniz.</p>
-        <div class="error" id="error-msg">Analiz için lütfen tüm soruları işaretleyin.</div>
+        <h1>Kutup Zihin Günlük Takip</h1>
+        <p class="subtitle">Bugünkü hislerinizi düşünerek 1 (Hiç katılmıyorum) ile 5 (Çok katılıyorum) arasında puanlayın.</p>
+        <div class="error" id="error-msg">Lütfen analizin doğruluğu için tüm soruları yanıtlayın.</div>
         <form id="survey-form"></form>
         <div class="nav-buttons">
-            <button onclick="calculateResults()">Durumumu Analiz Et</button>
-            <button class="secondary" onclick="showHistory()" style="flex: 0.5;">Geçmiş Veriler</button>
+            <button onclick="calculateResults()">Sonuçları Analiz Et</button>
+            <button class="secondary" onclick="showHistory()" style="flex: 0.5;">Geçmişi Gör</button>
         </div>
     </div>
 
     <div id="results-screen">
-        <h1>Kutup Zihin Analizi</h1>
-        <p class="subtitle" style="margin-bottom: 15px;">Bugünkü zihinsel verilerinize göre durumunuz:</p>
+        <h1>Günün Analizi</h1>
+        <p class="subtitle" style="margin-bottom: 15px;">İşte bugünkü genel durumun.</p>
         <div id="results-content"></div>
         <div class="motivation-box">
-            <div class="motivation-title">🌿 Kutup Zihin Önerisi</div>
-            <div class="motivation-task" id="motivation-text">Öneri hazırlanıyor...</div>
+            <div class="motivation-title">🌿 Günün Önerisi</div>
+            <div class="motivation-task" id="motivation-text">Görev yükleniyor...</div>
         </div>
         <div class="nav-buttons">
-            <button class="secondary" onclick="location.reload()">Yeni Test</button>
-            <button onclick="showHistory()">Gelişim Grafiği</button>
+            <button class="secondary" onclick="location.reload()">Ana Ekrana Dön</button>
+            <button onclick="showHistory()">Gelişim Grafiğini İncele</button>
         </div>
     </div>
 
     <div id="history-screen">
-        <h1>Gelişim Seyri</h1>
-        <p class="subtitle">Kutup Zihin ile son 14 günlük değişim grafiğiniz.</p>
+        <h1>Gelişim Grafiği</h1>
+        <p class="subtitle">Son 14 testinizin ortalamaları (Puan yükseldikçe denge artar)</p>
         <div class="chart-container">
             <canvas id="historyChart"></canvas>
         </div>
-        <button class="secondary" onclick="location.reload()" style="margin-top: 20px;">Ana Sayfaya Dön</button>
+        <button class="secondary" onclick="location.reload()" style="margin-top: 20px;">Ana Ekrana Dön</button>
     </div>
 
 </div>
 
 <script>
-    // Önceki sürümdeki soru havuzu ve çelişki algoritması korunmuştur.
+    // HAVUZ 1: Çelişki Tespiti İçin 10 Adet Çift Soru (Toplam 20 Soru)
     const pairedQuestions = [
         [{ id: "p1a", text: "Bugün kendimi genel olarak enerjik hissettim.", category: "ruh_sagligi", reverse: false, pairId: 1 },
          { id: "p1b", text: "Bugün içimden hiçbir şey yapmak gelmedi.", category: "ruh_sagligi", reverse: true, pairId: 1 }],
+         
         [{ id: "p2a", text: "Sabah uyandığımda kendimi dinlenmiş hissettim.", category: "uyku", reverse: false, pairId: 2 },
          { id: "p2b", text: "Gece boyunca sık sık uyandım veya yatağa dönmekte zorlandım.", category: "uyku", reverse: true, pairId: 2 }],
+         
         [{ id: "p3a", text: "Karşılaştığım küçük pürüzleri bugün sakinlikle çözebildim.", category: "ruh_sagligi", reverse: false, pairId: 3 },
          { id: "p3b", text: "Normalde önemsemeyeceğim ufak tefek şeyler bugün gereğinden fazla canımı sıktı.", category: "ruh_sagligi", reverse: true, pairId: 3 }],
+         
         [{ id: "p4a", text: "Geleceğe veya yarınki görevlerime dair hevesli hissediyorum.", category: "ruh_sagligi", reverse: false, pairId: 4 },
          { id: "p4b", text: "Önümdeki günler gözüme aşırı yorucu ve karanlık görünüyor.", category: "ruh_sagligi", reverse: true, pairId: 4 }],
+
         [{ id: "p5a", text: "Bugün ekip arkadaşlarımla uyum içinde çalıştığımı hissettim.", category: "ruh_sagligi", reverse: false, pairId: 5 },
          { id: "p5b", text: "Bugün çevremdeki insanların varlığı bana nedensizce batmaya başladı.", category: "ruh_sagligi", reverse: true, pairId: 5 }],
+
         [{ id: "p6a", text: "Dün gece uykuya dalmam oldukça kolay oldu.", category: "uyku", reverse: false, pairId: 6 },
          { id: "p6b", text: "Dün gece yatağa yattıktan sonra zihnimdeki düşünceler yüzünden uzun süre uyuyamadım.", category: "uyku", reverse: true, pairId: 6 }],
+
         [{ id: "p7a", text: "Günlük kişisel bakımıma (yemek, hijyen) yeterince özen gösterebildim.", category: "ruh_sagligi", reverse: false, pairId: 7 },
          { id: "p7b", text: "Bugün temel ihtiyaçlarımı karşılamak bile bana ağır bir yük gibi geldi.", category: "ruh_sagligi", reverse: true, pairId: 7 }],
+
         [{ id: "p8a", text: "Dikkatimi vermem gereken işlere kolayca odaklanabildim.", category: "ruh_sagligi", reverse: false, pairId: 8 },
          { id: "p8b", text: "Okuduğum veya yaptığım şeyleri sürekli baştan almak zorunda kaldım, zihnim çok dağınıktı.", category: "ruh_sagligi", reverse: true, pairId: 8 }],
+
         [{ id: "p9a", text: "Uykumun kalitesi genel olarak beni tatmin etti.", category: "uyku", reverse: false, pairId: 9 },
          { id: "p9b", text: "Ne kadar uyursam uyuyayım, uykumu hiç alamamışım gibi hissediyorum.", category: "uyku", reverse: true, pairId: 9 }],
+
         [{ id: "p10a", text: "Bulunduğum ortamda kendimi güvende ve huzurlu hissediyorum.", category: "ruh_sagligi", reverse: false, pairId: 10 },
          { id: "p10b", text: "Sürekli tetikteyim ve içimde nedensiz bir huzursuzluk/sıkıntı var.", category: "ruh_sagligi", reverse: true, pairId: 10 }]
     ];
 
+    // HAVUZ 2: Bağımsız ve Dolaylı 10 Soru
     const singleQuestions = [
         { id: "s1", text: "Bugün kaslarımda (boyun, omuz, çene) istemsiz bir gerginlik hissettim.", category: "ruh_sagligi", reverse: true, pairId: null },
         { id: "s2", text: "Ekip arkadaşlarımla sohbet etmek bugün bana iyi geldi.", category: "ruh_sagligi", reverse: false, pairId: null },
         { id: "s3", text: "Zaman zaman nefes darlığı veya göğsümde hafif bir baskı hissettim.", category: "ruh_sagligi", reverse: true, pairId: null },
         { id: "s4", text: "Gün içinde kendimi istemsizce gülerken veya gülümserken yakaladım.", category: "ruh_sagligi", reverse: false, pairId: null },
-        { id: "s5", text: "Kendimi dış dünyadan tamamen soyutlanmış hissettim.", category: "ruh_sagligi", reverse: true, pairId: null },
+        { id: "s5", text: "Kendimi dış dünyadan ve istasyondaki diğer kişilerden tamamen soyutlanmış hissettim.", category: "ruh_sagligi", reverse: true, pairId: null },
         { id: "s6", text: "Gün içinde o kadar yorgundum ki gözlerimi açık tutmakta zorlandım.", category: "uyku", reverse: true, pairId: null },
-        { id: "s7", text: "Yaptığım çalışmaların veya buradaki varlığımın anlamlı olduğuna inanıyorum.", category: "ruh_sagligi", reverse: false, pairId: null },
-        { id: "s8", text: "Eskiden keyif aldığım şeyler bugün hiç ilgimi çekmedi.", category: "ruh_sagligi", reverse: true, pairId: null },
+        { id: "s7", text: "Yaptığım araştırmanın veya buradaki varlığımın anlamlı olduğuna inanıyorum.", category: "ruh_sagligi", reverse: false, pairId: null },
+        { id: "s8", text: "Eskiden keyif aldığım şeyleri yapmak (kitap, müzik, hobi) bugün hiç ilgimi çekmedi.", category: "ruh_sagligi", reverse: true, pairId: null },
         { id: "s9", text: "Aynaya baktığımda kendimi fiziksel ve ruhsal olarak tükenmiş gördüm.", category: "ruh_sagligi", reverse: true, pairId: null },
-        { id: "s10", text: "Bugün yeni bir detay fark ettim ve bu hoşuma gitti.", category: "ruh_sagligi", reverse: false, pairId: null }
+        { id: "s10", text: "Bugün istasyonda/dışarıda yeni bir detay fark ettim ve bu hoşuma gitti.", category: "ruh_sagligi", reverse: false, pairId: null }
     ];
 
+    // GENİŞLETİLMİŞ GÖREV VE ÖNERİ HAVUZU
     const tasks = {
         harika: [
             "Bugün harika bir denge yakalamışsın! Ekip arkadaşlarına bu güzel enerjini yansıtarak istasyonun modunu yükseltebilirsin.",
-            "Zihnin berrak görünüyor, bugün planladığın karmaşık bir araştırmaya vakit ayırmak için çok uygun bir gün.",
+            "Zihnin berrak görünüyor, bugün planladığın karmaşık bir araştırmaya veya hobiye vakit ayırmak için çok uygun bir gün.",
             "Bu sakin ve dinç halini korumak için günün sonunda sevdiğin sıcak bir içecekle kendine teşekkür etmeyi unutma.",
-            "Yaratıcılığının zirvesindesin. Uzun zamandır ertelediğin o projeye başlamanın tam vakti."
+            "Enerjin çok yerinde! Belki bugün istasyondaki ortak bir alanı düzenlemek veya ekibe küçük bir sürpriz yapmak istersin.",
+            "Günün keyfini çıkar. Bu anı zihnine kazı ve daha zor günlerde buradaki başarın ve gücün aklına gelsin.",
+            "Bugün yaratıcılığının zirvesinde olabilirsin. Uzun zamandır ertelediğin o yazıya veya projeye başlamanın tam vakti."
         ],
         uyku: [
-            "Yatmadan en az 1 saat önce mavi ışıktan uzaklaşmak Kutup Zihin dengenizi korur.",
-            "Bugün öğleden sonra kafein alımını sınırlandırmayı deneyebilirsin.",
-            "Yatağa girmeden önce 5 dakikalık basit bir nefes egzersizi derin uykuyu destekleyecektir."
+            "Bugün uyku düzenine şefkat göstermek iyi olabilir. Yatmadan en az 1 saat önce mavi ışıktan uzaklaş.",
+            "Kaliteli bir gece geçirmek için bugün öğleden sonra kafein alımını sınırlandırmayı deneyebilirsin.",
+            "Yatağa girmeden önce 5 dakikalık basit bir esneme ve derin nefes egzersizi bedenin uykuya geçişini kolaylaştıracaktır.",
+            "Eğer zihnindeki düşünceler uyumanı engelliyorsa, yatağın yanına bir defter koy ve aklındakileri kağıda dök.",
+            "Odanın sıcaklığını bir miktar düşürmek ve tamamen karanlık olmasını sağlamak derin uykuyu artıracaktır.",
+            "Bugün gündüz saatlerinde kısa şekerlemeler (siesta) yapmaktan kaçın, böylece gece uyku basıncın yüksek olur."
         ],
         ruh_sagligi: [
-            "Zihnini dinlendirmeye alan aç. Bugün 15 dakika sadece gözlerini kapatıp sessizliği dinle.",
-            "Bugün stres yaratan karmaşık verileri okumaya ara ver. Sadece o ana odaklan.",
-            "Bugün kendine karşı çok nazik ol. Her şeyi mükemmel yapmak zorunda değilsin."
+            "Zihnini dinlendirmeye alan aç. Bugün 15 dakika sadece gözlerini kapatıp doğa veya okyanus sesleri dinleyebilirsin.",
+            "Kendini zorunlu hissetmeden, sadece güvendiğin bir ekip arkadaşınla kısa ve samimi bir sohbet etmek yükünü hafifletebilir.",
+            "Bugün iş dışındaki haberleri veya stres yaratan karmaşık verileri okumaya ara ver. Sadece o ana odaklan.",
+            "Eğer üzerinde bir ağırlık varsa, sadece olduğun yerde omuzlarını düşür, derin bir nefes al ve 'Şu an güvendeyim' de.",
+            "Eskiden sevdiğin ama unuttuğun bir şarkıyı aç. Müziğin zihnini alıp başka bir yere götürmesine izin ver.",
+            "Bugün kendine karşı çok nazik ol. Her şeyi mükemmel yapmak zorunda değilsin, bazen sadece günü atlatmak bile büyük bir başarıdır."
         ]
     };
 
     let currentTestQuestions = [];
 
+    // RASTGELE 15 SORU OLUŞTURMA ALGORİTMASI
     function generateRandomTest() {
+        // Çift sorulardan rastgele 5 çift (10 soru) seç
         let shuffledPairs = pairedQuestions.sort(() => 0.5 - Math.random()).slice(0, 5);
+        // Bağımsız sorulardan rastgele 5 soru seç
         let shuffledSingles = singleQuestions.sort(() => 0.5 - Math.random()).slice(0, 5);
+        
+        // Hepsini tek bir diziye topla
         shuffledPairs.forEach(pair => { currentTestQuestions.push(pair[0]); currentTestQuestions.push(pair[1]); });
         currentTestQuestions.push(...shuffledSingles);
+        
+        // Son 15 soruyu ekrana basılmadan önce kendi içinde karıştır
         currentTestQuestions = currentTestQuestions.sort(() => 0.5 - Math.random());
     }
 
     const form = document.getElementById('survey-form');
+
+    // Sayfa yüklendiğinde testi oluştur ve ekrana bas
     generateRandomTest();
     currentTestQuestions.forEach((q, index) => {
         const questionHtml = `
@@ -195,7 +223,7 @@
                         </label>
                     `).join('')}
                 </div>
-                <div class="scale-labels"><span>Hiç</span><span>Çok</span></div>
+                <div class="scale-labels"><span>Hiç Katılmıyorum</span><span>Çok Katılıyorum</span></div>
             </div>
         `;
         form.innerHTML += questionHtml;
@@ -205,6 +233,7 @@
         const formData = new FormData(form);
         const errorMsg = document.getElementById('error-msg');
         let answers = {};
+        
         for (let q of currentTestQuestions) {
             const val = formData.get(q.id);
             if (!val) { errorMsg.style.display = 'block'; return; }
@@ -212,8 +241,11 @@
         }
         errorMsg.style.display = 'none';
 
+        // 1. TUTARLILIK (SABOTAJ) KONTROLÜ
         let inconsistencyScore = 0;
         let pairs = {}; 
+        
+        // Sadece bu testte var olan çiftleri grupla
         currentTestQuestions.forEach(q => {
             if(q.pairId) {
                 if(!pairs[q.pairId]) pairs[q.pairId] = [];
@@ -221,6 +253,7 @@
             }
         });
 
+        // Eşleşen çiftler üzerinden fark hesapla (Mükemmel zıtlıkta toplam 6 etmeli)
         Object.values(pairs).forEach(pair => {
             if(pair.length === 2) {
                 let diff = Math.abs((pair[0] + pair[1]) - 6);
@@ -228,76 +261,112 @@
             }
         });
 
+        // 5 çift üzerinden eşik değer belirle (Puan yüksekse kişi rastgele basmıştır)
         let isSabotaged = inconsistencyScore >= 5; 
+
+        // 2. PUAN HESAPLAMASI (Ters soruları düzelterek)
         let scores = { ruh_sagligi: { t: 0, c: 0 }, uyku: { t: 0, c: 0 } };
+        
         currentTestQuestions.forEach(q => {
             let val = answers[q.id];
-            if(q.reverse) val = 6 - val;
+            if(q.reverse) val = 6 - val; // Ters soruların mantığını düzelt
+            
             scores[q.category].t += val; 
             scores[q.category].c += 1; 
         });
 
+        // Kategoride soru denk gelmemiş olma ihtimaline karşı kontrol (Çok düşük ihtimal ama kodun çökmesini önler)
         const avgScores = {
-            ruh_sagligi: (scores.ruh_sagligi.t / scores.ruh_sagligi.c).toFixed(1),
-            uyku: (scores.uyku.t / scores.uyku.c).toFixed(1)
+            ruh_sagligi: scores.ruh_sagligi.c > 0 ? (scores.ruh_sagligi.t / scores.ruh_sagligi.c).toFixed(1) : 3.0,
+            uyku: scores.uyku.c > 0 ? (scores.uyku.t / scores.uyku.c).toFixed(1) : 3.0
         };
 
         if(!isSabotaged) { saveDataLocally(avgScores); }
+        
         displayResults(avgScores, isSabotaged);
     }
 
     function displayResults(avgScores, isSabotaged) {
         document.getElementById('survey-screen').style.display = 'none';
         document.getElementById('results-screen').style.display = 'block';
+        
         const resultsContent = document.getElementById('results-content');
         resultsContent.innerHTML = '';
 
         if(isSabotaged) {
-            resultsContent.innerHTML += `<div class="result-card status-inconsistent">⚠️ <strong>Tutarsızlık Tespit Edildi:</strong> Yanıtlarınız arasında mantıksal farklar var. Sonuçlar yanıltıcı olabilir.</div>`;
+            resultsContent.innerHTML += `
+                <div class="result-card status-inconsistent">
+                    <strong>⚠️ Güvenilirlik Uyarısı:</strong> Yanıtların arasında mantıksal çelişkiler tespit ettik. Testi aceleyle veya dikkatsizce doldurmuş olabilir misin? Sonuçların doğruluğu düşük olabilir.
+                </div>
+            `;
         }
 
-        const categories = [{ key: 'ruh_sagligi', name: 'Zihinsel Odak' }, { key: 'uyku', name: 'Uyku Düzeni' }];
+        const categories = [
+            { key: 'ruh_sagligi', name: 'Zihinsel Odak ve Enerji' },
+            { key: 'uyku', name: 'Uyku Kalitesi ve Düzeni' }
+        ];
+
         let lowestCategory = null;
         let lowestScore = 5;
 
         categories.forEach(cat => {
             const avg = parseFloat(avgScores[cat.key]);
             const needsCare = avg < 3.2; 
+            
             if (avg < lowestScore) { lowestScore = avg; lowestCategory = cat.key; }
-            resultsContent.innerHTML += `<div class="result-card ${needsCare ? 'status-needs-care' : 'status-good'}"><strong>${cat.name}:</strong> ${avg} / 5</div>`;
+
+            const statusText = needsCare ? 'Özen Gösterilmeli' : 'Dengeli / İyi';
+
+            resultsContent.innerHTML += `
+                <div class="result-card ${needsCare ? 'status-needs-care' : 'status-good'}">
+                    <strong>${cat.name}:</strong> ${statusText} (Skor: ${avg} / 5)
+                </div>
+            `;
         });
 
         let taskArray = lowestScore < 3.2 ? tasks[lowestCategory] : tasks.harika;
-        document.getElementById('motivation-text').innerText = taskArray[Math.floor(Math.random() * taskArray.length)];
+        let randomTask = taskArray[Math.floor(Math.random() * taskArray.length)];
+        document.getElementById('motivation-text').innerText = randomTask;
     }
 
     function saveDataLocally(scores) {
-        let history = JSON.parse(localStorage.getItem('kutupZihinData') || '[]');
+        let history = JSON.parse(localStorage.getItem('polarDataV4') || '[]');
         const today = new Date().toLocaleDateString('tr-TR');
         history.push({ date: today, scores: scores });
         if(history.length > 14) history = history.slice(-14);
-        localStorage.setItem('kutupZihinData', JSON.stringify(history));
+        localStorage.setItem('polarDataV4', JSON.stringify(history));
     }
 
     function showHistory() {
         document.getElementById('survey-screen').style.display = 'none';
         document.getElementById('results-screen').style.display = 'none';
         document.getElementById('history-screen').style.display = 'block';
-        const history = JSON.parse(localStorage.getItem('kutupZihinData') || '[]');
-        if(history.length === 0) { alert("Henüz kayıtlı veri yok."); location.reload(); return; }
+
+        const history = JSON.parse(localStorage.getItem('polarDataV4') || '[]');
+        
+        if(history.length === 0) {
+            alert("Henüz geçerli bir test sonucunuz bulunmuyor. Lütfen çelişkisiz bir test tamamlayın.");
+            location.reload(); return;
+        }
+
+        const labels = history.map((item, index) => `${item.date}`);
+        const dataRuhSagligi = history.map(item => item.scores.ruh_sagligi);
+        const dataUyku = history.map(item => item.scores.uyku);
+
         const ctx = document.getElementById('historyChart').getContext('2d');
         new Chart(ctx, {
             type: 'line',
             data: {
-                labels: history.map(item => item.date),
+                labels: labels,
                 datasets: [
-                    { label: 'Zihinsel', data: history.map(item => item.scores.ruh_sagligi), borderColor: '#7a9b76', tension: 0.4 },
-                    { label: 'Uyku', data: history.map(item => item.scores.uyku), borderColor: '#b07d54', tension: 0.4 }
+                    { label: 'Zihinsel Enerji', data: dataRuhSagligi, borderColor: '#7a9b76', backgroundColor: '#7a9b76', tension: 0.4, borderWidth: 3 },
+                    { label: 'Uyku Kalitesi', data: dataUyku, borderColor: '#b07d54', backgroundColor: '#b07d54', tension: 0.4, borderWidth: 3 }
                 ]
             },
-            options: { scales: { y: { min: 1, max: 5 } } }
+            options: { responsive: true, scales: { y: { min: 1, max: 5 } } }
         });
     }
 </script>
+
 </body>
 </html>
